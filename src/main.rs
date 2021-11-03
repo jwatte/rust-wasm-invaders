@@ -4,23 +4,25 @@ use std::borrow::Cow;
 use std::borrow::Borrow;
 use quad_net::http_request::RequestBuilder;
 use quad_net::http_request::Request;
+use sapp_jsutils::JsObject;
 
 const ASSUMED_SCREEN_WIDTH: i32 = 2400;
 
 #[macroquad::main("Invaders")]
 async fn main() {
-    make_request();
+    tele_startup();
 
     let mut state = new_game_state();
     let assets = load_assets().await;
 
     /* for telemetry, check out:
-    https://github.com/not-fl3/quad-net/blob/master/examples/http_request.rs
+       https://github.com/not-fl3/quad-net/blob/master/examples/http_request.rs
+
+       See also:
+       https://github.com/not-fl3/miniquad-js-interop-demo/blob/master/js/demo.js
      */
 
     loop {
-        poll_requests();
-
         update_state(&mut state, &assets);
 
         render_scene(&state, &assets);
@@ -29,46 +31,92 @@ async fn main() {
     }
 }
 
-static TELEMETRY_URL : &str = "https://collect.observe-eng.com/v1/http/invaders";
-static AUTHORIZATION_HEADER : &str = "Bearer 101 4vVFnBaMXQ9LovF-HxIJGVgxG2V7dmRo";
-
-struct Pending {
-    req: Request,
-    //  hack time -- I can't get try_recv() to actually return the data,
-    //  so just blindly call it good after some amount of polling.
-    num: i32,
+#[no_mangle]
+extern "C" {
+    fn queue_telemetry(argtype: JsObject, arg: JsObject);
 }
 
-static mut PENDING_REQUESTS : Vec<Pending> = Vec::new();
+static VERSION : &str = "0.1.0";
 
-fn make_request() {
-    info!("Request start");
+fn tele_startup() {
+    let obj = JsObject::object();
+    //  Include game parameters
+    obj.set_field_string("VERSION", VERSION);
+    obj.set_field_f32("HORIZ_SPEED", HORIZ_SPEED);
+    obj.set_field_f32("VERT_SPEED", VERT_SPEED);
+    obj.set_field_f32("RIGHT_MARGIN", RIGHT_MARGIN);
+    obj.set_field_f32("LEFT_MARGIN", LEFT_MARGIN);
+    obj.set_field_f32("DOWN_DISTANCE", DOWN_DISTANCE);
+    obj.set_field_f32("PHASE_SPEED", PHASE_SPEED);
+    let kind = JsObject::string("start");
     unsafe {
-        PENDING_REQUESTS.push(Pending {
-            req: RequestBuilder::new(TELEMETRY_URL)
-                    .method(quad_net::http_request::Method::Post)
-                    .header("Authorization", AUTHORIZATION_HEADER)
-                    .body("{\"type\":\"test\"}")
-                    .send(),
-            num: 200,
-        });
+        queue_telemetry(kind, obj);
     }
 }
 
-fn poll_requests() {
+fn tele_new_level(level: i32, score: i32) {
+    let obj = JsObject::object();
+    obj.set_field_string("level", format!("{}", level).borrow());
+    obj.set_field_f32("score", score as f32);
+    let kind = JsObject::string("new_level");
     unsafe {
-        for req in PENDING_REQUESTS.iter_mut() {
-            if let Some(data) = req.req.try_recv() {
-                info!("Request done");
-                req.num = 0;
-            } else if req.num > 0 {
-                req.num -= 1;
-            }
-        }
-        PENDING_REQUESTS.retain(|req| req.num > 0);
+        queue_telemetry(kind, obj);
     }
 }
 
+fn tele_shot(xpos:f32, score:i32, alien_y: f32) {
+    let obj = JsObject::object();
+    obj.set_field_f32("xpos", xpos);
+    obj.set_field_f32("score", score as f32);
+    obj.set_field_f32("alien_y", alien_y as f32);
+    let kind = JsObject::string("shot");
+    unsafe {
+        queue_telemetry(kind, obj);
+    }
+}
+
+fn tele_hit(xpos:f32, score:i32, kind: usize, points:i32, remaining: usize) {
+    let obj = JsObject::object();
+    obj.set_field_f32("xpos", xpos);
+    obj.set_field_f32("score", score as f32);
+    obj.set_field_string("kind", format!("{}", kind).borrow());
+    obj.set_field_f32("points", points as f32);
+    obj.set_field_f32("remaining", remaining as f32);
+    let kind = JsObject::string("hit");
+    unsafe {
+        queue_telemetry(kind, obj);
+    }
+}
+
+fn tele_miss(xpos: f32, score: i32, remaining: usize) {
+    let obj = JsObject::object();
+    obj.set_field_f32("xpos", xpos);
+    obj.set_field_f32("score", score as f32);
+    obj.set_field_f32("remaining", remaining as f32);
+    let kind = JsObject::string("miss");
+    unsafe {
+        queue_telemetry(kind, obj);
+    }
+}
+
+fn tele_advance(alien_y: f32, remaining: usize) {
+    let obj = JsObject::object();
+    obj.set_field_f32("alien_y", alien_y);
+    obj.set_field_f32("remaining", remaining as f32);
+    let kind = JsObject::string("advance");
+    unsafe {
+        queue_telemetry(kind, obj);
+    }
+}
+
+fn tele_pause(paused: bool) {
+    let obj = JsObject::object();
+    obj.set_field_string("paused", format!("{}", paused).borrow());
+    let kind = JsObject::string("pause");
+    unsafe {
+        queue_telemetry(kind, obj);
+    }
+}
 
 fn render_scene(state: &State, assets: &Assets) {
     clear_background(Color::new(0.11, 0.11, 0.11, 1.00));
@@ -220,6 +268,9 @@ fn reset_level(_level: i32, state: &mut State, assets: &Assets) {
 
     state.alien_state = AlienState::Right;
 
+    //  todo: level progression
+    tele_new_level(1, state.score);
+
     let mut ypos = 0.2;
 
     state.aliens.push(Alien { sprite:&ENEMY3_SPRITE, xpos: 0.07, ypos: ypos, phase: 0.0, points: 30, dead: false });
@@ -289,6 +340,7 @@ fn update_state(state: &mut State, assets: &Assets) {
 
     if is_key_pressed(KeyCode::Escape) {
         state.paused = !state.paused;
+        tele_pause(state.paused);
     }
     if !state.paused {
         //  evolve timers
@@ -321,7 +373,8 @@ fn update_state(state: &mut State, assets: &Assets) {
                         ypos: 1.33 * 0.94 - 0.01,
                         velocity: state.fire_velocity,
                         dead: false,
-                    })
+                    });
+                    tele_shot(state.player_pos_fr, state.score, state.alien_target_y);
                 }
             }
         }
@@ -333,6 +386,7 @@ fn update_state(state: &mut State, assets: &Assets) {
             if bullet.ypos < 0.0 {
                 bullet.dead = true;
                 hasdeadbullet = true;
+                tele_miss(bullet.xpos, state.score, state.aliens.len());
                 //  TODO: original Space Invaders exploded the bullet at the top of the screen
             }
         }
@@ -383,11 +437,13 @@ fn update_state(state: &mut State, assets: &Assets) {
             state.alien_target_y = max_y + DOWN_DISTANCE;
             adjust_dx = RIGHT_MARGIN - max_x; // negative
             adjust_dy = -adjust_dx * VERT_SPEED / HORIZ_SPEED;
+            tele_advance(state.alien_target_y, state.aliens.len());
         } else if state.alien_state == AlienState::Left && min_x <= LEFT_MARGIN {
             state.alien_state = AlienState::DownToRight;
             state.alien_target_y = max_y + DOWN_DISTANCE;
             adjust_dx = LEFT_MARGIN - min_x; // positive
             adjust_dy = adjust_dx * VERT_SPEED / HORIZ_SPEED;
+            tele_advance(state.alien_target_y, state.aliens.len());
         } else if state.alien_state == AlienState::DownToRight && max_y >= state.alien_target_y {
             state.alien_state = AlienState::Right;
             adjust_dy = state.alien_target_y - max_y;   //  negative
@@ -397,15 +453,16 @@ fn update_state(state: &mut State, assets: &Assets) {
             adjust_dy = state.alien_target_y - max_y;   //  negative
             adjust_dx = adjust_dy * HORIZ_SPEED / VERT_SPEED;
         }
-        //  maybe adjust for fractional movement
+        //  adjust for fractional movement
         if adjust_dx != 0.0 || adjust_dy != 0.0 {
             for alien in state.aliens.iter_mut() {
                 alien.xpos += adjust_dx;
                 alien.ypos += adjust_dy;
             }
         }
-        //  detect bullet collisions
+        //  detect alien collisions with things
         let bspr : &LoadedSprite = &assets.sprites[IX_LASER];
+        let num_aliens = state.aliens.len();
         for alien in state.aliens.iter_mut() {
             if alien.dead {
                 continue;
@@ -424,9 +481,11 @@ fn update_state(state: &mut State, assets: &Assets) {
                         alien.dead = true;
                         hasdeadbullet = true;
                         hasdeadalien = true;
+                        tele_hit(bullet.xpos, state.score, alien.sprite.index, alien.points, num_aliens-1);
                         //  TODO: spawn explosion
                 }
             }
+            //  TODO: check barrier collision
             //  TODO: check player collision
         }
         if hasdeadbullet {

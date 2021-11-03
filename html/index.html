@@ -1,5 +1,5 @@
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <title>Invaders</title>
@@ -16,13 +16,61 @@
             background: black;
             z-index: 0;
         }
+        .game {
+            display: none;
+        }
+        .intro {
+            display: flex;
+            color: #e0e0e0;
+            font-family:Arial, Helvetica, sans-serif;
+            font-size:1rem;
+        }
+        .flowrow {
+            flex-direction: row;
+        }
+        .flowcol {
+            flex-direction: column;
+        }
     </style>
 </head>
-
 <body>
-    <canvas id="glcanvas" tabindex='1'></canvas>
+    <div class="intro flowrow" id="div_intro">
+        <div class="flowcol">
+            
+        </div>
+        <div class="flowcol">
+            <div class="flowrow">
+                <label for="input_name">Player Name</label><input id="input_name"/>
+            </div>            
+            <div class="flowrow">
+                <button id="button_start">Start</button>
+            </div>            
+        </div>
+        <div class="flowcol">
+            
+        </div>
+    </div>
+    <canvas class="game" id="glcanvas" tabindex='1'></canvas>
     <script src="mq_js_bundle.js"></script>
-    <script>load("invaders.wasm");</script>
+    <script src="sapp_jsutils.js"></script>
+    <script src="observe-invaders.js"></script>
+    <script language="javascript">
+        const $ = (id) => document.getElementById(id);
+        let input_name = $("input_name");
+        let button_start = $("button_start");
+        let div_intro = $("div_intro");
+        let canvas_glcanvas = $("glcanvas");
+
+        input_name.value = observeTeleData.username;
+
+        button_start.onclick = function() {
+            div_intro.style.display = "none";
+            canvas_glcanvas.style.display = "block";
+            observeTeleData.username = input_name.value;
+            window.localStorage.observeTeleData = JSON.stringify(observeTeleData);
+            load("invaders.wasm");
+        }
+    </script>
 </body>
 
 </html>
