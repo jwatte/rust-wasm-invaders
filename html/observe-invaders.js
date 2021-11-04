@@ -35,8 +35,6 @@ clog(`playerid=${observeTeleData.playerid} sessionid=${observeTeleData.sessionid
 // Will be called when wasm_exports and wasm_memory will be available
 function on_init() {
     /// Call rust app function with string argument
-    // wasm_exports.hi_rust_with_string(js_object("plugin initialized!"));
-    // wasm_exports.hi_rust_with_object(js_object({"key":"value"}));
     flush_queue();
 }
 
