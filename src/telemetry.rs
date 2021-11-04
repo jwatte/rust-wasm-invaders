@@ -1,6 +1,6 @@
 //  telemetry.rs
 use sapp_jsutils::JsObject;
-use crate::params::*;
+use crate::params;
 use std::borrow::Borrow;
 
 /* for telemetry, check out:
@@ -18,13 +18,13 @@ extern "C" {
 pub fn tele_startup() {
     let obj = JsObject::object();
     //  Include game parameters
-    obj.set_field_string("VERSION", VERSION);
-    obj.set_field_f32("HORIZ_SPEED", HORIZ_SPEED);
-    obj.set_field_f32("VERT_SPEED", VERT_SPEED);
-    obj.set_field_f32("RIGHT_MARGIN", RIGHT_MARGIN);
-    obj.set_field_f32("LEFT_MARGIN", LEFT_MARGIN);
-    obj.set_field_f32("DOWN_DISTANCE", DOWN_DISTANCE);
-    obj.set_field_f32("PHASE_SPEED", PHASE_SPEED);
+    obj.set_field_string("VERSION", params::VERSION);
+    obj.set_field_f32("HORIZ_SPEED", params::HORIZ_SPEED);
+    obj.set_field_f32("VERT_SPEED", params::VERT_SPEED);
+    obj.set_field_f32("RIGHT_MARGIN", params::RIGHT_MARGIN);
+    obj.set_field_f32("LEFT_MARGIN", params::LEFT_MARGIN);
+    obj.set_field_f32("DOWN_DISTANCE", params::DOWN_DISTANCE);
+    obj.set_field_f32("PHASE_SPEED", params::PHASE_SPEED);
     let kind = JsObject::string("start");
     unsafe {
         queue_telemetry(kind, obj);

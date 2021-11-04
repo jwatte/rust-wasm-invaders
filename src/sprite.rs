@@ -1,22 +1,22 @@
 //  sprite.rs
 
-use macroquad::prelude::*;
+use macroquad::prelude as mq;
 use std::borrow::Cow;
 
 pub fn draw_sprite(left : f32, top : f32, width : f32, spr: &LoadedSprite, x: f32, y: f32, r: f32, s: f32) {
-    let dtp = DrawTextureParams {
-        dest_size: Some(vec2(
+    let dtp = mq::DrawTextureParams {
+        dest_size: Some(mq::vec2(
             width * spr.f_w * s,
             width * spr.f_h * s)),
         rotation: r,
-        pivot: Some(vec2(left+width*x, top + width*y)),
+        pivot: Some(mq::vec2(left+width*x, top + width*y)),
         ..Default::default()
     };
-    draw_texture_ex(
+    mq::draw_texture_ex(
         spr.texture,
         left + width * (x - spr.f_w*0.5*s),
         top + width * (y - spr.f_w*0.5*s),
-        LIGHTGRAY,
+        mq::WHITE,
         dtp,
     );
 }
@@ -31,7 +31,7 @@ pub struct Sprite {
 
 pub struct LoadedSprite {
     pub sprite: &'static Sprite,
-    pub texture: Texture2D,
+    pub texture: mq::Texture2D,
     pub f_w: f32,
     pub f_h: f32,
 }
