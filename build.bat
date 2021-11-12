@@ -1,2 +1,2 @@
-cargo build --target wasm32-unknown-unknown
-copy target\\wasm32-unknown-unknown\\debug\\invaders.wasm html\\
+cargo build --target wasm32-unknown-unknown --release
+copy target\\wasm32-unknown-unknown\\release\\invaders.wasm html\\

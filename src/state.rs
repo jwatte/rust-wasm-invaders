@@ -1,16 +1,17 @@
 //  state.rs
 
-use macroquad::prelude as mq;
 use crate::assets;
+use crate::explosion;
 use crate::params;
 use crate::sprite;
 use crate::telemetry;
-
+use macroquad::prelude as mq;
 
 pub struct Bullet {
     pub xpos: f32,
     pub ypos: f32,
     pub velocity: f32,
+    pub fresh: bool, //  used for sound
     pub dead: bool,
 }
 
@@ -40,12 +41,17 @@ pub struct State {
     pub lives: i32,
     pub player_pos_fr: f32,
     pub time_to_fire: f32,
+    pub speed_ratio: f32,
 
     pub alien_state: AlienState,
     pub alien_target_y: f32,
 
     pub bullets: Vec<Bullet>,
     pub aliens: Vec<Alien>,
+    pub explosions: Vec<explosion::Explosion>,
+
+    pub bassline_time: f32,
+    pub bassline_speed: f32,
 
     pub player_speed: f32,
     pub firing_duration: f32,
@@ -62,23 +68,46 @@ pub fn new_game_state() -> State {
         lives: 2,
         player_pos_fr: 0.48,
         time_to_fire: 0.0,
+        speed_ratio: 0.1,
 
         alien_state: AlienState::Right,
         alien_target_y: 0.2,
 
         bullets: Vec::new(),
         aliens: Vec::new(),
+        explosions: Vec::new(),
 
-        player_speed: 1.0,
-        firing_duration: 0.7,
-        fire_velocity: 1.2,
+        bassline_time: 0.0,
+        bassline_speed: 1.0,
+
+        player_speed: 0.3,
+        firing_duration: 0.8,
+        fire_velocity: 1.1,
     };
+}
+
+fn push_line(aliens: &mut Vec<Alien>, sprite: &'static sprite::Sprite, ypos: f32, points: i32) {
+    let mut ix = 0;
+    while ix < 10 {
+        aliens.push(Alien {
+            sprite: sprite,
+            xpos: 0.07 + 0.07 * (ix as f32),
+            ypos: ypos,
+            phase: 0.0,
+            points: points,
+            dead: false,
+        });
+        ix += 1;
+    }
 }
 
 pub fn reset_level(_level: i32, state: &mut State) {
     state.bullets = Vec::new();
     state.aliens = Vec::new();
     state.player_pos_fr = 0.48;
+
+    state.bassline_time = 0.0;
+    state.bassline_speed = 1.0;
 
     state.alien_state = AlienState::Right;
 
@@ -87,71 +116,20 @@ pub fn reset_level(_level: i32, state: &mut State) {
 
     let mut ypos = 0.2;
 
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.07, ypos: ypos, phase: 0.0, points: 30, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.14, ypos: ypos, phase: 0.0, points: 30, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.21, ypos: ypos, phase: 0.0, points: 30, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.28, ypos: ypos, phase: 0.0, points: 30, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.35, ypos: ypos, phase: 0.0, points: 30, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.42, ypos: ypos, phase: 0.0, points: 30, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.49, ypos: ypos, phase: 0.0, points: 30, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.56, ypos: ypos, phase: 0.0, points: 30, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.63, ypos: ypos, phase: 0.0, points: 30, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY3_SPRITE, xpos: 0.70, ypos: ypos, phase: 0.0, points: 30, dead: false });
-
+    push_line(&mut state.aliens, &assets::ENEMY3_SPRITE, ypos, 30);
     ypos += 0.1;
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.07, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.14, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.21, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.28, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.35, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.42, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.49, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.56, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.63, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.70, ypos: ypos, phase: 0.0, points: 20, dead: false });
-
+    push_line(&mut state.aliens, &assets::ENEMY2_SPRITE, ypos, 20);
     ypos += 0.1;
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.07, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.14, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.21, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.28, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.35, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.42, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.49, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.56, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.63, ypos: ypos, phase: 0.0, points: 20, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY2_SPRITE, xpos: 0.70, ypos: ypos, phase: 0.0, points: 20, dead: false });
-
+    push_line(&mut state.aliens, &assets::ENEMY2_SPRITE, ypos, 20);
     ypos += 0.1;
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.07, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.14, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.21, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.28, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.35, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.42, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.49, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.56, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.63, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.70, ypos: ypos, phase: 0.0, points: 10, dead: false });
-
+    push_line(&mut state.aliens, &assets::ENEMY1_SPRITE, ypos, 10);
     ypos += 0.1;
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.07, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.14, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.21, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.28, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.35, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.42, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.49, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.56, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.63, ypos: ypos, phase: 0.0, points: 10, dead: false });
-    state.aliens.push(Alien { sprite:&assets::ENEMY1_SPRITE, xpos: 0.70, ypos: ypos, phase: 0.0, points: 10, dead: false });
+    push_line(&mut state.aliens, &assets::ENEMY1_SPRITE, ypos, 10);
 
     state.alien_target_y = ypos;
 }
 
-pub fn update_state(state: &mut State, assets: &assets::Assets) {
-    let delta_time = mq::get_frame_time();
-
+pub fn update_state(delta_time: f32, state: &mut State, assets: &assets::Assets) {
     if mq::is_key_pressed(mq::KeyCode::Escape) {
         state.paused = !state.paused;
         telemetry::tele_pause(state.paused);
@@ -177,7 +155,11 @@ pub fn update_state(state: &mut State, assets: &assets::Assets) {
                 state.player_pos_fr -= delta_time * state.player_speed;
             }
 
-            state.player_pos_fr = mq::clamp(state.player_pos_fr, params::LEFT_MARGIN, params::RIGHT_MARGIN);
+            state.player_pos_fr = mq::clamp(
+                state.player_pos_fr,
+                params::LEFT_MARGIN,
+                params::RIGHT_MARGIN,
+            );
             if mq::is_key_down(mq::KeyCode::Space) {
                 if state.time_to_fire <= 0.0 {
                     //  TODO: original Space Invaders only allowed one bullet alive at once
@@ -187,6 +169,7 @@ pub fn update_state(state: &mut State, assets: &assets::Assets) {
                         ypos: 1.33 * 0.94 - 0.01,
                         velocity: state.fire_velocity,
                         dead: false,
+                        fresh: true,
                     });
                     telemetry::tele_shot(state.player_pos_fr, state.score, state.alien_target_y);
                 }
@@ -213,13 +196,17 @@ pub fn update_state(state: &mut State, assets: &assets::Assets) {
         let mut max_x = 0.0;
         let mut max_y = -1.0;
         let num_aliens = state.aliens.len() as f32;
-        let h_mul : f32 = params::HORIZ_SPEED / (3.0 + num_aliens);
-        let v_mul : f32 = params::VERT_SPEED / (3.0 + num_aliens);
+        let h_mul: f32 = params::HORIZ_SPEED / (3.0 + num_aliens);
+        let v_mul: f32 = params::VERT_SPEED / (3.0 + num_aliens);
+        state.speed_ratio = 4.0 / (3.0 + num_aliens);
+
         if state.alien_state == AlienState::Right {
             alien_dx = h_mul * delta_time;
-        } else if state.alien_state == AlienState::Left {    //  Left
+        } else if state.alien_state == AlienState::Left {
+            //  Left
             alien_dx = h_mul * delta_time * -1.0;
-        } else {    //  DownToLeft, DownToRight
+        } else {
+            //  DownToLeft, DownToRight
             alien_dy = v_mul * delta_time;
         }
         let phase_delta = delta_time * params::PHASE_SPEED / (2.0 + num_aliens.sqrt());
@@ -260,11 +247,11 @@ pub fn update_state(state: &mut State, assets: &assets::Assets) {
             telemetry::tele_advance(state.alien_target_y, state.aliens.len());
         } else if state.alien_state == AlienState::DownToRight && max_y >= state.alien_target_y {
             state.alien_state = AlienState::Right;
-            adjust_dy = state.alien_target_y - max_y;   //  negative
+            adjust_dy = state.alien_target_y - max_y; //  negative
             adjust_dx = -adjust_dy * params::HORIZ_SPEED / params::VERT_SPEED;
         } else if state.alien_state == AlienState::DownToLeft && max_y >= state.alien_target_y {
             state.alien_state = AlienState::Left;
-            adjust_dy = state.alien_target_y - max_y;   //  negative
+            adjust_dy = state.alien_target_y - max_y; //  negative
             adjust_dx = adjust_dy * params::HORIZ_SPEED / params::VERT_SPEED;
         }
         //  adjust for fractional movement
@@ -275,38 +262,58 @@ pub fn update_state(state: &mut State, assets: &assets::Assets) {
             }
         }
         //  detect alien collisions with things
-        let bspr : &sprite::LoadedSprite = &assets.sprites[assets::IX_LASER];
+        let bspr: &sprite::LoadedSprite = &assets.sprites[assets::IX_LASER];
         let num_aliens = state.aliens.len();
         for alien in state.aliens.iter_mut() {
             if alien.dead {
                 continue;
             }
-            let aspr : &sprite::LoadedSprite = &assets.sprites[alien.sprite.index];
+            let aspr: &sprite::LoadedSprite = &assets.sprites[alien.sprite.index];
             for bullet in state.bullets.iter_mut() {
                 if bullet.dead {
                     continue;
                 }
-                if bullet.xpos + bspr.f_w * 0.5 > alien.xpos - aspr.f_w * 0.5 &&
-                    bullet.xpos - bspr.f_w * 0.5 < alien.xpos + aspr.f_w * 0.5 &&
-                    bullet.ypos > alien.ypos - aspr.f_h * 0.5 &&
-                    bullet.ypos - bspr.f_w < alien.ypos + aspr.f_h * 0.5 {
-                        state.score += alien.points;
-                        bullet.dead = true;
-                        alien.dead = true;
-                        hasdeadbullet = true;
-                        hasdeadalien = true;
-                        telemetry::tele_hit(bullet.xpos, state.score, alien.sprite.index, alien.points, num_aliens-1);
-                        //  TODO: spawn explosion
+                if bullet.xpos + bspr.f_w * 0.5 > alien.xpos - aspr.f_w * 0.5
+                    && bullet.xpos - bspr.f_w * 0.5 < alien.xpos + aspr.f_w * 0.5
+                    && bullet.ypos > alien.ypos - aspr.f_h * 0.5
+                    && bullet.ypos - bspr.f_w < alien.ypos + aspr.f_h * 0.5
+                {
+                    state.score += alien.points;
+                    bullet.dead = true;
+                    alien.dead = true;
+                    hasdeadbullet = true;
+                    hasdeadalien = true;
+                    telemetry::tele_hit(
+                        bullet.xpos,
+                        state.score,
+                        alien.sprite.index,
+                        alien.points,
+                        num_aliens - 1,
+                    );
+                    state
+                        .explosions
+                        .push(explosion::new(bullet.xpos, bullet.ypos));
                 }
             }
             //  TODO: check barrier collision
             //  TODO: check player collision
         }
+
+        //  evolve explosions
+        let mut hasdeadexplosion = false;
+        for ex in state.explosions.iter_mut() {
+            explosion::evolve(delta_time, ex);
+            hasdeadexplosion = hasdeadexplosion || ex.dead;
+        }
+
         if hasdeadbullet {
             state.bullets.retain(|bullet| !bullet.dead);
         }
         if hasdeadalien {
             state.aliens.retain(|alien| !alien.dead);
+        }
+        if hasdeadexplosion {
+            state.explosions.retain(|x| !x.dead);
         }
 
         //  TODO: alien bomb dropping
@@ -315,4 +322,3 @@ pub fn update_state(state: &mut State, assets: &assets::Assets) {
         //  TODO: detect level clear
     }
 }
-

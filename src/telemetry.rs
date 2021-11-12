@@ -1,6 +1,6 @@
 //  telemetry.rs
-use sapp_jsutils::JsObject;
 use crate::params;
+use sapp_jsutils::JsObject;
 use std::borrow::Borrow;
 
 /* for telemetry, check out:
@@ -9,7 +9,6 @@ use std::borrow::Borrow;
     See also:
     https://github.com/not-fl3/miniquad-js-interop-demo/blob/master/js/demo.js
 */
-
 
 extern "C" {
     fn queue_telemetry(argtype: JsObject, arg: JsObject);
@@ -31,6 +30,15 @@ pub fn tele_startup() {
     }
 }
 
+pub fn tele_loading_done() {
+    let obj = JsObject::object();
+    //  Include game parameters
+    let kind = JsObject::string("loading_done");
+    unsafe {
+        queue_telemetry(kind, obj);
+    }
+}
+
 pub fn tele_new_level(level: i32, score: i32) {
     let obj = JsObject::object();
     obj.set_field_string("level", format!("{}", level).borrow());
@@ -41,7 +49,7 @@ pub fn tele_new_level(level: i32, score: i32) {
     }
 }
 
-pub fn tele_shot(xpos:f32, score:i32, alien_y: f32) {
+pub fn tele_shot(xpos: f32, score: i32, alien_y: f32) {
     let obj = JsObject::object();
     obj.set_field_f32("xpos", xpos);
     obj.set_field_f32("score", score as f32);
@@ -52,7 +60,7 @@ pub fn tele_shot(xpos:f32, score:i32, alien_y: f32) {
     }
 }
 
-pub fn tele_hit(xpos:f32, score:i32, kind: usize, points:i32, remaining: usize) {
+pub fn tele_hit(xpos: f32, score: i32, kind: usize, points: i32, remaining: usize) {
     let obj = JsObject::object();
     obj.set_field_f32("xpos", xpos);
     obj.set_field_f32("score", score as f32);
@@ -94,4 +102,3 @@ pub fn tele_pause(paused: bool) {
         queue_telemetry(kind, obj);
     }
 }
-
