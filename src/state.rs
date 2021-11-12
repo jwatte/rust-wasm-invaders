@@ -196,9 +196,9 @@ pub fn update_state(delta_time: f32, state: &mut State, assets: &assets::Assets)
         let mut max_x = 0.0;
         let mut max_y = -1.0;
         let num_aliens = state.aliens.len() as f32;
-        let h_mul: f32 = params::HORIZ_SPEED / (3.0 + num_aliens);
-        let v_mul: f32 = params::VERT_SPEED / (3.0 + num_aliens);
-        state.speed_ratio = 4.0 / (3.0 + num_aliens);
+        let level_speed = (state.current_level as f32 + 4.0) / 5.0;
+        let h_mul: f32 = params::HORIZ_SPEED / (3.0 + num_aliens) * level_speed;
+        let v_mul: f32 = params::VERT_SPEED / (3.0 + num_aliens) * level_speed;
 
         if state.alien_state == AlienState::Right {
             alien_dx = h_mul * delta_time;
@@ -311,10 +311,15 @@ pub fn update_state(delta_time: f32, state: &mut State, assets: &assets::Assets)
         }
         if hasdeadalien {
             state.aliens.retain(|alien| !alien.dead);
+            if state.aliens.len() == 0 {
+                state.reset_countdown = 1.2;
+            }
         }
         if hasdeadexplosion {
             state.explosions.retain(|x| !x.dead);
         }
+
+        state.speed_ratio = 4.0 / (3.0 + num_aliens as f32);
 
         //  TODO: alien bomb dropping
         //  TODO: alien bomb evolution

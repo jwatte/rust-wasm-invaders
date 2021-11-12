@@ -3,8 +3,8 @@ use crate::explosion;
 use crate::state;
 use macroquad::audio;
 
-fn calc_bassline_index(cnt: usize, ratio: f32) -> usize {
-    return ((cnt as f32 * ratio) as usize).clamp(0, cnt - 1);
+fn calc_bassline_index(cnt: usize, ratio: f32, level: i32) -> usize {
+    return ((cnt as f32 * ratio) as usize + level as usize).clamp(0, cnt - 1);
 }
 
 pub fn update_sounds(delta_time: f32, st: &mut state::State, ass: &assets::Assets) {
@@ -12,7 +12,7 @@ pub fn update_sounds(delta_time: f32, st: &mut state::State, ass: &assets::Asset
         if st.reset_countdown <= 0.0 {
             st.bassline_time -= delta_time;
             if st.bassline_time <= 0.0 {
-                let ix = calc_bassline_index(ass.basslines.len(), st.speed_ratio);
+                let ix = calc_bassline_index(ass.basslines.len(), st.speed_ratio, st.current_level);
                 st.bassline_time = ass.basslines[ix].duration;
                 audio::play_sound_once(ass.basslines[ix].sound);
             }

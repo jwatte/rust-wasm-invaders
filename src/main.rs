@@ -7,6 +7,19 @@ mod sprite;
 mod state;
 mod telemetry;
 
+/*
+
+TODO:
+
+- reset field when all aliens dead
+- increment pace for each reset
+- alien bombs
+- bottom shields
+- top UFO
+- highscores
+
+*/
+
 #[macroquad::main("Invaders")]
 async fn main() {
     telemetry::tele_startup();
