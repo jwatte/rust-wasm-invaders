@@ -11,7 +11,6 @@ mod telemetry;
 
 TODO:
 
-- reset field when all aliens dead
 - increment pace for each reset
 - alien bombs
 - bottom shields
@@ -68,7 +67,7 @@ fn render_scene(state: &state::State, assets: &assets::Assets) {
 
     {
         //  draw lives
-        let pspr = &assets.sprites[0];
+        let pspr = &assets.sprites[assets::IX_PLAYER];
         for n in 0..state.lives {
             sprite::draw_sprite(
                 left,
@@ -83,16 +82,36 @@ fn render_scene(state: &state::State, assets: &assets::Assets) {
         }
 
         //  draw player
-        sprite::draw_sprite(
-            left,
-            top,
-            width,
-            pspr,
-            state.player_pos_fr,
-            1.333 - 0.06,
-            0.0,
-            1.0,
-        );
+        if state.player_state == state::PlayerState::Playing {
+            sprite::draw_sprite(
+                left,
+                top,
+                width,
+                pspr,
+                state.player_pos_fr,
+                1.333 - 0.06,
+                0.0,
+                1.0,
+            );
+        } else if state.player_state == state::PlayerState::HitRespawning {
+            //  animate in from the left
+            let alpha = state.player_hit_timer / state::HIT_RESPAWN_TIME;
+            let scale = if ((alpha * 10.0) as usize % 2) == 1 {
+                1.0
+            } else {
+                0.0
+            };
+            sprite::draw_sprite(
+                left,
+                top,
+                width,
+                pspr,
+                state.player_pos_fr - alpha * state.player_pos_fr,
+                1.333 - 0.06,
+                0.0,
+                scale,
+            );
+        }
     }
 
     //  draw aliens
@@ -109,13 +128,15 @@ fn render_scene(state: &state::State, assets: &assets::Assets) {
             1.0,
         );
     }
-
-    for ex in state.explosions.iter() {
-        explosion::render(left, top, width, ex, &assets);
+    {
+        let bspr = &assets.sprites[assets::IX_BOMB];
+        for bomb in state.bombs.iter() {
+            sprite::draw_sprite(left, top, width, bspr, bomb.xpos, bomb.ypos, 0.0, 1.0);
+        }
     }
 
     {
-        let bspr = &assets.sprites[1];
+        let bspr = &assets.sprites[assets::IX_LASER];
         //  draw bullets
         for bullet in state.bullets.iter() {
             sprite::draw_sprite(
@@ -128,6 +149,10 @@ fn render_scene(state: &state::State, assets: &assets::Assets) {
                 0.0,
                 1.0,
             );
+        }
+
+        for ex in state.explosions.iter() {
+            explosion::render(left, top, width, ex, &assets);
         }
     }
 

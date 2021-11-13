@@ -102,3 +102,15 @@ pub fn tele_pause(paused: bool) {
         queue_telemetry(kind, obj);
     }
 }
+
+pub fn tele_bombed(xpos: f32, score: i32, remaining: usize, lives: i32) {
+    let obj = JsObject::object();
+    obj.set_field_f32("xpos", xpos);
+    obj.set_field_f32("score", score as f32);
+    obj.set_field_f32("remaining", remaining as f32);
+    obj.set_field_f32("lives", lives as f32);
+    let kind = JsObject::string("bombed");
+    unsafe {
+        queue_telemetry(kind, obj);
+    }
+}

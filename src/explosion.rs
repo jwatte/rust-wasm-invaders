@@ -11,21 +11,31 @@ pub struct Explosion {
     pub speed: f32,
     pub phase: f32,
     pub sound: usize,
-    pub fresh: bool,    //  used for sound
+    pub fresh: bool, //  used for sound
     pub growing: bool,
     pub dead: bool,
 }
 
+//  Explosion for an alien -- small "zip" sound effect
 pub fn new(xpos: f32, ypos: f32) -> Explosion {
-    let ix: usize = rand::gen_range(0, 9);
     let six: usize = rand::gen_range(0, 4) + assets::IX_SOUND_POP_01;
+    return new_sound(xpos, ypos, six);
+}
+
+//  Explosion for player -- bit "boom" sound effect
+pub fn new_player(xpos: f32, ypos: f32) -> Explosion {
+    return new_sound(xpos, ypos, assets::IX_SOUND_EXPLOSION);
+}
+
+pub fn new_sound(xpos: f32, ypos: f32, sound: usize) -> Explosion {
+    let ix: usize = rand::gen_range(0, 9);
     return Explosion {
         sprite: &assets::EXPLOSION_SPRITES[ix],
         xpos: xpos,
         ypos: ypos,
         speed: 4.0,
         phase: 0.2,
-        sound: six,
+        sound: sound,
         fresh: true,
         growing: true,
         dead: false,

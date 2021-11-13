@@ -34,6 +34,7 @@ pub const IX_EXPLOSION_5: usize = 10;
 pub const IX_EXPLOSION_6: usize = 11;
 pub const IX_EXPLOSION_7: usize = 12;
 pub const IX_EXPLOSION_8: usize = 13;
+pub const IX_BOMB: usize = 14;
 
 pub static PLAYER_SPRITE: sprite::Sprite = sprite::Sprite {
     index: IX_PLAYER,
@@ -73,6 +74,14 @@ pub static ENEMY3_SPRITE: sprite::Sprite = sprite::Sprite {
     width_pix: 104,
     height_pix: 84,
     scale: 1.3,
+};
+
+pub static BOMB_SPRITE: sprite::Sprite = sprite::Sprite {
+    index: IX_BOMB,
+    filename: b_str("data/Lasers/laserRed07.png"),
+    width_pix: 9,
+    height_pix: 37,
+    scale: 1.0,
 };
 
 pub static EXPLOSION_SPRITES: [sprite::Sprite; 9] = [
@@ -204,6 +213,7 @@ pub async fn load_assets() -> Assets {
         s_exp6,
         s_exp7,
         s_exp8,
+        s_bomb,
     ) = join!(
         load_sprite(&PLAYER_SPRITE),
         load_sprite(&LASER_SPRITE),
@@ -219,6 +229,7 @@ pub async fn load_assets() -> Assets {
         load_sprite(&EXPLOSION_SPRITES[6]),
         load_sprite(&EXPLOSION_SPRITES[7]),
         load_sprite(&EXPLOSION_SPRITES[8]),
+        load_sprite(&BOMB_SPRITE),
     );
     vec.push(s_player);
     vec.push(s_laser);
@@ -234,6 +245,7 @@ pub async fn load_assets() -> Assets {
     vec.push(s_exp6);
     vec.push(s_exp7);
     vec.push(s_exp8);
+    vec.push(s_bomb);
     mq::info!("loading sprites done");
 
     let mut snd: Vec<audio::Sound> = Vec::new();
@@ -253,28 +265,75 @@ pub async fn load_assets() -> Assets {
     snd.push(sn_pop04.unwrap());
 
     let mut bl: Vec<BasslineSound> = Vec::new();
-    bl.push(load_bassline(60).await);
-    bl.push(load_bassline(70).await);
-    bl.push(load_bassline(80).await);
-    bl.push(load_bassline(90).await);
-    bl.push(load_bassline(100).await);
-    bl.push(load_bassline(110).await);
-    bl.push(load_bassline(120).await);
-    bl.push(load_bassline(130).await);
-    bl.push(load_bassline(140).await);
-    bl.push(load_bassline(150).await);
-    bl.push(load_bassline(160).await);
-    bl.push(load_bassline(170).await);
-    bl.push(load_bassline(180).await);
-    bl.push(load_bassline(200).await);
-    bl.push(load_bassline(220).await);
-    bl.push(load_bassline(240).await);
-    bl.push(load_bassline(260).await);
-    bl.push(load_bassline(280).await);
-    bl.push(load_bassline(300).await);
-    bl.push(load_bassline(320).await);
-    bl.push(load_bassline(340).await);
-    bl.push(load_bassline(360).await);
+    let (
+        sn_60,
+        sn_70,
+        sn_80,
+        sn_90,
+        sn_100,
+        sn_110,
+        sn_120,
+        sn_130,
+        sn_140,
+        sn_150,
+        sn_160,
+        sn_170,
+        sn_180,
+        sn_200,
+        sn_220,
+        sn_240,
+        sn_260,
+        sn_280,
+        sn_300,
+        sn_320,
+        sn_340,
+        sn_360,
+    ) = join!(
+        load_bassline(60),
+        load_bassline(70),
+        load_bassline(80),
+        load_bassline(90),
+        load_bassline(100),
+        load_bassline(110),
+        load_bassline(120),
+        load_bassline(130),
+        load_bassline(140),
+        load_bassline(150),
+        load_bassline(160),
+        load_bassline(170),
+        load_bassline(180),
+        load_bassline(200),
+        load_bassline(220),
+        load_bassline(240),
+        load_bassline(260),
+        load_bassline(280),
+        load_bassline(200),
+        load_bassline(320),
+        load_bassline(340),
+        load_bassline(360),
+    );
+    bl.push(sn_60);
+    bl.push(sn_70);
+    bl.push(sn_80);
+    bl.push(sn_90);
+    bl.push(sn_100);
+    bl.push(sn_110);
+    bl.push(sn_120);
+    bl.push(sn_130);
+    bl.push(sn_140);
+    bl.push(sn_150);
+    bl.push(sn_160);
+    bl.push(sn_170);
+    bl.push(sn_180);
+    bl.push(sn_200);
+    bl.push(sn_220);
+    bl.push(sn_240);
+    bl.push(sn_260);
+    bl.push(sn_280);
+    bl.push(sn_300);
+    bl.push(sn_320);
+    bl.push(sn_340);
+    bl.push(sn_360);
 
     mq::info!("loading sounds done");
 
