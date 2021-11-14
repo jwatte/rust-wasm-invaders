@@ -8,7 +8,7 @@ fn calc_bassline_index(cnt: usize, ratio: f32, level: i32) -> usize {
 }
 
 pub fn update_sounds(delta_time: f32, st: &mut state::State, ass: &assets::Assets) {
-    if !st.paused {
+    if !st.paused && st.player_state != state::PlayerState::GameOver {
         if st.reset_countdown <= 0.0 {
             st.bassline_time -= delta_time;
             if st.bassline_time <= 0.0 {

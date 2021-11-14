@@ -3,10 +3,7 @@ use crate::params;
 use sapp_jsutils::JsObject;
 use std::borrow::Borrow;
 
-/* for telemetry, check out:
-    https://github.com/not-fl3/quad-net/blob/master/examples/http_request.rs
-
-    See also:
+/*  See also:
     https://github.com/not-fl3/miniquad-js-interop-demo/blob/master/js/demo.js
 */
 
@@ -110,6 +107,18 @@ pub fn tele_bombed(xpos: f32, score: i32, remaining: usize, lives: i32) {
     obj.set_field_f32("remaining", remaining as f32);
     obj.set_field_f32("lives", lives as f32);
     let kind = JsObject::string("bombed");
+    unsafe {
+        queue_telemetry(kind, obj);
+    }
+}
+
+pub fn tele_game_over(xpos: f32, score: i32, remaining: usize, level: i32) {
+    let obj = JsObject::object();
+    obj.set_field_f32("xpos", xpos);
+    obj.set_field_f32("score", score as f32);
+    obj.set_field_f32("remaining", remaining as f32);
+    obj.set_field_f32("level", level as f32);
+    let kind = JsObject::string("game_over");
     unsafe {
         queue_telemetry(kind, obj);
     }

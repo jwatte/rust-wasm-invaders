@@ -1,6 +1,7 @@
 use macroquad::prelude as mq;
 mod assets;
 mod explosion;
+mod highscore;
 mod params;
 mod sounds;
 mod sprite;
@@ -39,9 +40,7 @@ async fn main() {
         let delta_time = mq::get_frame_time().min(0.1);
 
         state::update_state(delta_time, &mut state, &assets);
-
         sounds::update_sounds(delta_time, &mut state, &assets);
-
         render_scene(&state, &assets);
 
         mq::next_frame().await;
@@ -65,95 +64,119 @@ fn render_scene(state: &state::State, assets: &assets::Assets) {
     let sh = mq::screen_height();
     let (left, top, width, height) = letterbox(sw, sh);
 
-    {
-        //  draw lives
-        let pspr = &assets.sprites[assets::IX_PLAYER];
-        for n in 0..state.lives {
-            sprite::draw_sprite(
-                left,
-                top,
-                width,
-                pspr,
-                (n as f32 + 0.6) * pspr.f_w * 0.5,
-                1.333 - pspr.f_h * 0.6 * 0.45,
-                0.0,
-                0.45,
-            );
+    if state.player_state != state::PlayerState::GameOver {
+        {
+            //  draw lives
+            let pspr = &assets.sprites[assets::IX_PLAYER];
+            for n in 0..state.lives {
+                sprite::draw_sprite(
+                    left,
+                    top,
+                    width,
+                    pspr,
+                    (n as f32 + 0.6) * pspr.f_w * 0.5,
+                    1.333 - pspr.f_h * 0.6 * 0.45,
+                    0.0,
+                    0.45,
+                );
+            }
+
+            //  draw player
+            if state.player_state == state::PlayerState::Playing {
+                sprite::draw_sprite(
+                    left,
+                    top,
+                    width,
+                    pspr,
+                    state.player_pos_fr,
+                    1.333 - 0.06,
+                    0.0,
+                    1.0,
+                );
+            } else if state.player_state == state::PlayerState::HitRespawning {
+                //  animate in from the left
+                let alpha = state.player_hit_timer / state::HIT_RESPAWN_TIME;
+                let scale = if ((alpha * 10.0) as usize % 2) == 1 {
+                    1.0
+                } else {
+                    0.0
+                };
+                sprite::draw_sprite(
+                    left,
+                    top,
+                    width,
+                    pspr,
+                    state.player_pos_fr - alpha * state.player_pos_fr,
+                    1.333 - 0.06,
+                    0.0,
+                    scale,
+                );
+            }
         }
 
-        //  draw player
-        if state.player_state == state::PlayerState::Playing {
+        //  draw aliens
+        for alien in state.aliens.iter() {
+            let asp = &assets.sprites[alien.sprite.index];
             sprite::draw_sprite(
                 left,
                 top,
                 width,
-                pspr,
-                state.player_pos_fr,
-                1.333 - 0.06,
-                0.0,
+                asp,
+                alien.xpos,
+                alien.ypos,
+                alien.phase.sin() * 0.1,
                 1.0,
             );
-        } else if state.player_state == state::PlayerState::HitRespawning {
-            //  animate in from the left
-            let alpha = state.player_hit_timer / state::HIT_RESPAWN_TIME;
-            let scale = if ((alpha * 10.0) as usize % 2) == 1 {
-                1.0
-            } else {
-                0.0
-            };
-            sprite::draw_sprite(
-                left,
-                top,
-                width,
-                pspr,
-                state.player_pos_fr - alpha * state.player_pos_fr,
-                1.333 - 0.06,
-                0.0,
-                scale,
-            );
         }
-    }
+        {
+            let bspr = &assets.sprites[assets::IX_BOMB];
+            for bomb in state.bombs.iter() {
+                sprite::draw_sprite(left, top, width, bspr, bomb.xpos, bomb.ypos, 0.0, 1.0);
+            }
+        }
 
-    //  draw aliens
-    for alien in state.aliens.iter() {
-        let asp = &assets.sprites[alien.sprite.index];
-        sprite::draw_sprite(
-            left,
-            top,
-            width,
-            asp,
-            alien.xpos,
-            alien.ypos,
-            alien.phase.sin() * 0.1,
-            1.0,
+        {
+            let bspr = &assets.sprites[assets::IX_LASER];
+            //  draw bullets
+            for bullet in state.bullets.iter() {
+                sprite::draw_sprite(
+                    left,
+                    top,
+                    width,
+                    bspr,
+                    bullet.xpos,
+                    bullet.ypos + bspr.f_h * 0.5,
+                    0.0,
+                    1.0,
+                );
+            }
+
+            for ex in state.explosions.iter() {
+                explosion::render(left, top, width, ex, &assets);
+            }
+        }
+    } else {
+        mq::draw_rectangle(
+            left + width * 0.2,
+            top + height * 0.25,
+            width * 0.6,
+            height * 0.08,
+            mq::BLACK,
         );
-    }
-    {
-        let bspr = &assets.sprites[assets::IX_BOMB];
-        for bomb in state.bombs.iter() {
-            sprite::draw_sprite(left, top, width, bspr, bomb.xpos, bomb.ypos, 0.0, 1.0);
-        }
-    }
-
-    {
-        let bspr = &assets.sprites[assets::IX_LASER];
-        //  draw bullets
-        for bullet in state.bullets.iter() {
-            sprite::draw_sprite(
-                left,
-                top,
-                width,
-                bspr,
-                bullet.xpos,
-                bullet.ypos + bspr.f_h * 0.5,
-                0.0,
-                1.0,
-            );
-        }
-
-        for ex in state.explosions.iter() {
-            explosion::render(left, top, width, ex, &assets);
-        }
+        mq::draw_text(
+            "Game Over",
+            left + width * 0.4,
+            top + height * 0.3,
+            height * 0.04,
+            mq::WHITE,
+        );
+        mq::draw_text(
+            "Press SPACE to play again",
+            left + width * 0.32,
+            top + height * 0.5,
+            height * 0.025,
+            mq::WHITE,
+        );
     }
 
     //  draw masking bars

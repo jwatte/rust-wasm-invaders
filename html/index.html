@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Invaders</title>
@@ -16,38 +17,82 @@
             background: black;
             z-index: 0;
         }
+
         .game {
             display: none;
         }
+
         .intro {
             display: flex;
             color: #e0e0e0;
-            font-family:Arial, Helvetica, sans-serif;
-            font-size:1rem;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 4vh;
         }
+
+        .input input {
+            font-size: 4vh;
+        }
+
+        .input button {
+            font-size: 4vh;
+        }
+
         .flowrow {
             flex-direction: row;
+            justify-content: space-evenly;
+            min-height: 2rem;
         }
+
         .flowcol {
             flex-direction: column;
+            justify-content: space-evenly;
+        }
+
+        .flowrow div {
+            display: inline-block;
+            width: 33vw;
+            min-height: 2rem;
+        }
+
+        .hidden {
+            visibility: hidden;
+        }
+
+        .error {
+            color: red;
         }
     </style>
 </head>
+
 <body>
-    <div class="intro flowrow" id="div_intro">
-        <div class="flowcol">
-            
-        </div>
+    <div class="intro" id="div_intro">
         <div class="flowcol">
             <div class="flowrow">
-                <label for="input_name">Player Name</label><input id="input_name"/>
-            </div>            
+                <div>&nbsp;</div>
+                <div>&nbsp;</div>
+                <div>&nbsp;</div>
+            </div>
             <div class="flowrow">
-                <button id="button_start">Start</button>
-            </div>            
-        </div>
-        <div class="flowcol">
-            
+                <div>
+                    <label for="input_name">Player Name</label>
+                </div>
+                <div>
+                    <input id="input_name" />
+                </div>
+                <div>&nbsp;</div>
+            </div>
+            <div class="flowrow">
+                <div>&nbsp;</div>
+                <div>
+                    <button id="button_start">Start</button>
+                </div>
+                <div id="errormsg" class="error">&nbsp;</div>
+            </div>
+            <div class="flowrow">
+                <div>&nbsp;</div>
+                <div>&nbsp;</div>
+                <div>&nbsp;</div>
+            </div>
         </div>
     </div>
     <canvas class="game" id="glcanvas" tabindex='1'></canvas>
@@ -60,15 +105,25 @@
         let button_start = $("button_start");
         let div_intro = $("div_intro");
         let canvas_glcanvas = $("glcanvas");
+        let error = $("errormsg");
 
         input_name.value = observeTeleData.username;
 
-        button_start.onclick = function() {
-            div_intro.style.display = "none";
-            canvas_glcanvas.style.display = "block";
-            observeTeleData.username = input_name.value;
-            window.localStorage.observeTeleData = JSON.stringify(observeTeleData);
-            load("invaders.wasm");
+        button_start.onclick = function () {
+            let name = input_name.value.trim();
+            if (name.length > 31) {
+                name = name.substring(0, 31);
+            }
+            input_name.value = name;
+            if (name.length > 0) {
+                observeTeleData.username = name;
+                div_intro.style.display = "none";
+                canvas_glcanvas.style.display = "block";
+                window.localStorage.observeTeleData = JSON.stringify(observeTeleData);
+                load("invaders.wasm");
+            } else {
+                $("error").innerText = "Please enter a name";
+            }
         }
     </script>
 </body>
