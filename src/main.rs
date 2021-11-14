@@ -20,7 +20,7 @@ TODO:
 
 */
 
-#[macroquad::main("Invaders")]
+#[macroquad::main("Space Observers")]
 async fn main() {
     telemetry::tele_startup();
 

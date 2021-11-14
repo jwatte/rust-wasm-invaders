@@ -24,7 +24,7 @@ if (window.localStorage.observeTeleData) {
 if (!observeTeleData || !observeTeleData.playerid) {
     const playerid = make_id_string();
     observeTeleData = {
-        username: "Player1",
+        username: "",
         playerid: playerid,
     };
 }
@@ -37,6 +37,34 @@ const BACKEND_AUTH = "Bearer 598c4bcd-e454-4fba-a87c-1068f5828eb4";
 
 let onHighscoreLoaded = null;
 
+function fetch_highscores() {
+    let bereq = new XMLHttpRequest();
+    bereq.onloadend = function (e) {
+        let r = "" + bereq.status + " " + bereq.statusText;
+        if (bereq.status >= 300 && bereq.responseText) {
+            r = r + " " + bereq.responseText;
+        }
+        clog(`fetch_highscores: `, r);
+        if (bereq.status >= 200 && bereq.status < 300) {
+            load_highscores(bereq.responseText);
+        }
+    };
+    bereq.open("GET", BACKEND_URL, true);
+    bereq.setRequestHeader('Content-Type', 'text/json');
+    bereq.setRequestHeader('Authorization', BACKEND_AUTH);
+    bereq.send();
+}
+
+function load_highscores(text) {
+    let dec = JSON.parse(text);
+    if (dec && dec.highscores && dec.highscores.length > 0) {
+        highscores = dec.highscores;
+        if (onHighscoreLoaded) {
+            onHighscoreLoaded(highscores);
+        }
+    }
+}
+
 function blind_backend_post(arg) {
     let bereq = new XMLHttpRequest();
     bereq.onloadend = function (e) {
@@ -44,15 +72,9 @@ function blind_backend_post(arg) {
         if (bereq.status >= 300 && bereq.responseText) {
             r = r + " " + bereq.responseText;
         }
-        clog(`backend: `, r);
+        clog(`blind_backend_post: `, r);
         if (bereq.status >= 200 && bereq.status < 300) {
-            let dec = JSON.parse(bereq.responseText);
-            if (dec && dec.highscores && dec.highscores.length > 0) {
-                highscores = dec.highscores;
-                if (onHighscoreLoaded) {
-                    onHighscoreLoaded(highscores);
-                }
-            }
+            load_highscores(bereq.responseText);
         }
     };
     bereq.open("POST", BACKEND_URL, true);
@@ -61,10 +83,12 @@ function blind_backend_post(arg) {
     bereq.send(JSON.stringify(arg));
 }
 
-blind_backend_post({
-    request: "onload",
-    teledata: observeTeleData,
-});
+function post_session_data() {
+    blind_backend_post({
+        request: "onload",
+        teledata: observeTeleData,
+    });
+}
 
 let highscores = [
     { name: "AAA", score: 100.0 },
@@ -81,12 +105,15 @@ let highscores = [
 ];
 
 function register_highscore(arg) {
+    arg = consume_js_object(arg);
     let atend = true;
+    const score = 0 + arg.score;
+    const username = observeTeleData.username;
     for (let i = 0; i != 10; i++) {
         if (highscores[i].score < arg.score) {
-            highscores.splice(i, 0, { name: observeTeleData.username, score: arg.score });
-            if (highscores.length() > 11) {
-                highscores.splice(11, highscores.length() - 11);
+            highscores.splice(i, 0, { name: username, score: score });
+            if (highscores.length > 11) {
+                highscores.splice(11, highscores.length - 11);
             }
             atend = false;
             break;
@@ -94,13 +121,13 @@ function register_highscore(arg) {
     }
     if (atend) {
         //  if I didn't beat anyone, then tack me on at the end
-        arg[10] = { name: observeTeleData.username, score: arg.score };
+        highscores[10] = { name: username, score: score };
     }
     blind_backend_post({
         request: "highscore",
         teledata: observeTeleData,
         score: {
-            name: observeTeleData.username,
+            name: username,
             score: 0 + arg.score,
         },
     });
@@ -171,8 +198,8 @@ window.onunload = function () {
 
 //  This function should probably be a postMessage() on a WebWorker
 function queue_telemetry(typearg, objarg) {
-    let type = get_js_object(typearg);
-    let obj = get_js_object(objarg);
+    let type = consume_js_object(typearg);
+    let obj = consume_js_object(objarg);
     let payload = {
         metadata: {
             //  boo hiss -- this never increments by the delta, because of 53-bit doubles

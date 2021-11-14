@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Invaders</title>
+    <title>Space Observers</title>
     <style>
         html,
         body,
@@ -16,6 +16,7 @@
             position: absolute;
             background: black;
             z-index: 0;
+            font-size: 2vh;
         }
 
         .game {
@@ -23,35 +24,52 @@
         }
 
         .intro {
-            display: flex;
+            display: grid;
+            grid-template-columns: [left] 20vw [center] 40vw [right];
+            grid-template-rows: [top] 5vh [name] 2vh [middle] 2vh [button] 2vh [spacing] 4vh [highscores];
+            grid-template-areas:
+                "row1 row1 row1"
+                "label name start"
+                "row3 row3 row3"
+                ". error ."
+                "row5 row5 row5"
+                ". highscore ."
+                "row7 row7 row7"
+                ". disclaimer ."
+            ;
             color: #e0e0e0;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 4vh;
         }
 
-        .input input {
-            font-size: 4vh;
+        div.disclaimer {
+            padding-top: 4vh;
+            grid-area: disclaimer;
+            font-size: 1.5vh;
+            color: gray;
         }
 
-        .input button {
-            font-size: 4vh;
+        label.label {
+            grid-area: label;
+            text-align: right;
+            padding-right: 1vw;
         }
 
-        .flowrow {
-            flex-direction: row;
-            justify-content: space-evenly;
-            min-height: 2rem;
+        input.name {
+            grid-area: name;
+            font-size: 2vh;
+            min-height: 2.5vh;
+            max-width: 35vw;
         }
 
-        .flowcol {
-            flex-direction: column;
-            justify-content: space-evenly;
+        div.error {
+            grid-area: error;
         }
 
-        .flowrow div {
-            display: inline-block;
-            width: 33vw;
-            min-height: 2rem;
+        button.start {
+            grid-area: start;
+            font-size: 2vh;
+            min-height: 2.5vh;
+            max-width: 23vw;
         }
 
         .hidden {
@@ -61,44 +79,46 @@
         .error {
             color: red;
         }
+
+        table.highscore {
+            grid-area: highscore;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .hs_name {
+            text-align: left;
+        }
+
+        .hs_score {
+            text-align: right;
+        }
     </style>
 </head>
 
 <body>
     <div class="intro" id="div_intro">
-        <div class="flowcol">
-            <div class="flowrow">
-                <div>&nbsp;</div>
-                <div>&nbsp;</div>
-                <div>&nbsp;</div>
-            </div>
-            <div class="flowrow">
-                <div>
-                    <label for="input_name">Player Name</label>
-                </div>
-                <div>
-                    <input id="input_name" />
-                </div>
-                <div>&nbsp;</div>
-            </div>
-            <div class="flowrow">
-                <div>&nbsp;</div>
-                <div>
-                    <button id="button_start">Start</button>
-                </div>
-                <div id="errormsg" class="error">&nbsp;</div>
-            </div>
-            <div class="flowrow">
-                <div>&nbsp;</div>
-                <div>&nbsp;</div>
-                <div>&nbsp;</div>
-            </div>
+        <label class="label" for="input_name">Player Name</label>
+        <input class="name" id="input_name" placeholder="Player1" />
+        <div id="errormsg" class="error">&nbsp;</div>
+        <button class="start" id="button_start">Start</button>
+
+        <table class="highscore">
+            <thead>
+                <th class='hs_name'>Name</th>
+                <th class='hs_score'>Score</th>
+            </thead>
+            <tbody id="highscores"></tbody>
+        </table>
+
+        <div class="disclaimer">
+            This game doesn't use cookies, but it does send a high score to a web service.
+            By clicking "Start," you agree!
         </div>
     </div>
     <canvas class="game" id="glcanvas" tabindex='1'></canvas>
     <script src="mq_js_bundle.js"></script>
     <script src="sapp_jsutils.js"></script>
-    <script src="observe-invaders.js"></script>
+    <script src="space-observers.js"></script>
     <script language="javascript">
         const $ = (id) => document.getElementById(id);
         let input_name = $("input_name");
@@ -106,11 +126,16 @@
         let div_intro = $("div_intro");
         let canvas_glcanvas = $("glcanvas");
         let error = $("errormsg");
+        let tbody = $("highscores");
 
         input_name.value = observeTeleData.username;
 
+        function sanitize_name(n) {
+            return ('' + n).trim();
+        }
+
         button_start.onclick = function () {
-            let name = input_name.value.trim();
+            let name = sanitize_name(input_name.value);
             if (name.length > 31) {
                 name = name.substring(0, 31);
             }
@@ -120,11 +145,32 @@
                 div_intro.style.display = "none";
                 canvas_glcanvas.style.display = "block";
                 window.localStorage.observeTeleData = JSON.stringify(observeTeleData);
-                load("invaders.wasm");
+                post_session_data();
+                load("space-observers.wasm");
             } else {
-                $("error").innerText = "Please enter a name";
+                $("errormsg").innerText = "Please enter a name";
             }
         }
+
+        onHighscoreLoaded = (hs) => {
+            clog(`highscore loading ${hs}`);
+            if (hs && hs.length) {
+                tbody.textContent = '';
+                for (const sc of hs) {
+                    let tr = document.createElement('tr');
+                    let name = document.createElement('td');
+                    name.innerText = sanitize_name(sc.name);
+                    name.className = 'hs_name';
+                    tr.appendChild(name);
+                    let score = document.createElement('td');
+                    score.className = 'hs_score';
+                    score.innerText = '' + (+sc.score);
+                    tr.appendChild(score);
+                    tbody.appendChild(tr);
+                }
+            }
+        };
+        fetch_highscores();
     </script>
 </body>
 

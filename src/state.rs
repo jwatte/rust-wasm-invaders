@@ -195,10 +195,10 @@ pub fn update_state(delta_time: f32, state: &mut State, assets: &assets::Assets)
 
             if state.player_state == PlayerState::Playing {
                 //  evolve inputs
-                if mq::is_key_down(mq::KeyCode::Right) {
+                if mq::is_key_down(mq::KeyCode::Right) || mq::is_key_down(mq::KeyCode::D) {
                     state.player_pos_fr += delta_time * state.player_speed;
                 }
-                if mq::is_key_down(mq::KeyCode::Left) {
+                if mq::is_key_down(mq::KeyCode::Left) || mq::is_key_down(mq::KeyCode::A) {
                     state.player_pos_fr -= delta_time * state.player_speed;
                 }
 
@@ -411,8 +411,9 @@ pub fn update_state(delta_time: f32, state: &mut State, assets: &assets::Assets)
                         hasdeadbomb = true;
                     } else if state.player_state == PlayerState::Playing
                         && bomb.ypos >= 1.33 - 0.06 - playspr.f_h * 0.5
-                        && bomb.xpos >= state.player_pos_fr - playspr.f_w * 0.5
-                        && bomb.xpos <= state.player_pos_fr + playspr.f_w * 0.5
+                        && bomb.ypos < 1.33 - 0.06 + playspr.f_h * 0.5
+                        && bomb.xpos >= state.player_pos_fr - playspr.f_w * 0.45
+                        && bomb.xpos <= state.player_pos_fr + playspr.f_w * 0.45
                     {
                         bomb.dead = true;
                         hasdeadbomb = true;
